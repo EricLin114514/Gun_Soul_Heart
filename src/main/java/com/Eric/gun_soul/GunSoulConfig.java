@@ -2,7 +2,6 @@ package com.Eric.gun_soul;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;
-import oshi.driver.unix.aix.Ls;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -18,6 +18,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
+import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.List;
 
@@ -68,63 +69,76 @@ public class ModEvents {
         // 2. 守衛：判定擊殺者是否為 LivingEntity
         if (!(source.getEntity() instanceof LivingEntity killer)) return;
 
-        // 3. 核心邏輯：獲取 Capability 並執行充能
-        killer.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
-            // 守衛：如果已經在 Fever Mode，不增加能量
-            if (energy.isFeverMode()) return;
+        // 3. 核心守衛：檢查是否佩戴了銃魂之心
+        CuriosApi.getCuriosHelper().findFirstCurio(killer, ModItems.GUN_SOUL_HEART.get()).ifPresent(slotResult -> {
+            ItemStack heartStack = slotResult.stack();
 
-            // 先獲取基礎值
-            double charge = GunSoulConfig.BASE_KILL_CHARGE.get();
-            String victimId = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType()).toString();
+            // 4. 核心邏輯：獲取 Capability 並執行充能
+            killer.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
 
-            // 處理特殊實體加成 (這段可以考慮抽成一個獨立方法，但目前先平舖)
-            List<? extends String> specialList = GunSoulConfig.SPECIAL_ENTITY_CHARGES.get();
-            for (String entry : specialList) {
-                String[] parts = entry.split(":");
-                // 處理 domain:path:value (長度 3) 或 path:value (長度 2)
-                if (parts.length >= 2) {
-                    String id = (parts.length == 3) ? parts[0] + ":" + parts[1] : parts[0];
-                    String valStr = (parts.length == 3) ? parts[2] : parts[1];
+                int modeIndex = heartStack.getOrCreateTag().getInt("SoulHeartMode");
+                SoulHeartMode mode = SoulHeartMode.values()[modeIndex % SoulHeartMode.values().length];
 
-                    if (id.equals(victimId)) {
-                        try {
-                            charge = Double.parseDouble(valStr);
-                        } catch (NumberFormatException e) {
-                            // 防止 Config 填錯導致崩潰
-                            charge = GunSoulConfig.BASE_KILL_CHARGE.get();
+                // 守衛：如果已經在 Fever Mode，不增加能量
+                if (energy.isFeverMode()) return;
+
+                // 守衛：如果不在狂喜，不增加能量
+                if (mode != SoulHeartMode.FRENZY) return;
+
+                // 先獲取基礎值
+                double charge = GunSoulConfig.BASE_KILL_CHARGE.get();
+                String victimId = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType()).toString();
+
+                // 處理特殊實體加成 (這段可以考慮抽成一個獨立方法，但目前先平舖)
+                List<? extends String> specialList = GunSoulConfig.SPECIAL_ENTITY_CHARGES.get();
+                for (String entry : specialList) {
+                    String[] parts = entry.split(":");
+                    // 處理 domain:path:value (長度 3) 或 path:value (長度 2)
+                    if (parts.length >= 2) {
+                        String id = (parts.length == 3) ? parts[0] + ":" + parts[1] : parts[0];
+                        String valStr = (parts.length == 3) ? parts[2] : parts[1];
+
+                        if (id.equals(victimId)) {
+                            try {
+                                charge = Double.parseDouble(valStr);
+                            } catch (NumberFormatException e) {
+                                // 防止 Config 填錯導致崩潰
+                                charge = GunSoulConfig.BASE_KILL_CHARGE.get();
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
-            }
 
-            // 執行充能
-            energy.addEnergy((float) charge);
+                // 執行充能
+                energy.addEnergy((float) charge);
 
-            // 判定觸發 Fever Mode
-            if (energy.getEnergy() >= 100f) {
-                int duration = GunSoulConfig.FEVER_DURATION_TICKS.get();
-                energy.setFeverTicks(duration);
-                energy.setEnergy(0); // 觸發後清空能量，或者你想滿條保持 100 也行，依你的規則
+                // 判定觸發 Fever Mode
+                if (energy.getEnergy() >= 100f) {
+                    int duration = GunSoulConfig.FEVER_DURATION_TICKS.get();
+                    energy.setFeverTicks(duration);
+                    energy.setEnergy(0); // 觸發後清空能量，或者你想滿條保持 100 也行，依你的規則
 
-                // Action bar 提示
-                if (killer instanceof net.minecraft.world.entity.player.Player player) {
-                    player.displayClientMessage(
-                            Component.translatable("message.gun_soul.fever_start")
-                                    .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
-                            true // true 表示顯示在 Action Bar，false 則顯示在聊天欄
-                    );
+                    // Action bar 提示
+                    if (killer instanceof net.minecraft.world.entity.player.Player player) {
+                        player.displayClientMessage(
+                                Component.translatable("message.gun_soul.fever_start")
+                                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                                true // true 表示顯示在 Action Bar，false 則顯示在聊天欄
+                        );
+                    }
                 }
-            }
 
-            // 同步封包到客戶端
-            GunSoulPacketHandler.INSTANCE.send(
-                    PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> killer),
-                    new FrenzyEnergySyncPacket(killer.getId(), energy.getEnergy(), energy.getFeverTicks())
-            );
+                // 同步封包到客戶端
+                GunSoulPacketHandler.INSTANCE.send(
+                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> killer),
+                        new FrenzyEnergySyncPacket(killer.getId(), energy.getEnergy(), energy.getFeverTicks())
+                );
 
-            // 除錯訊息 (之後可移除)
-            // killer.sendSystemMessage(Component.literal("擊殺充能: " + charge + " | 當前能量: " + energy.getEnergy()));
+                // 除錯訊息 (之後可移除)
+                // killer.sendSystemMessage(Component.literal("擊殺充能: " + charge + " | 當前能量: " + energy.getEnergy()));
+            });
+
         });
     }
 }

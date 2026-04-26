@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "gun_soul:item/heart_of_gun_soul"
+  }
+}
