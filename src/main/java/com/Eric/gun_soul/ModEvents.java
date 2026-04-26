@@ -1,0 +1,130 @@
+package com.Eric.gun_soul;
+
+import com.Eric.gun_soul.capability.FrenzyEnergyProvider;
+import com.Eric.gun_soul.networks.FrenzyEnergySyncPacket;
+import com.Eric.gun_soul.networks.GunSoulPacketHandler;
+import com.tacz.guns.api.event.common.GunFireEvent;
+import com.tacz.guns.api.item.IGun;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.registries.ForgeRegistries;
+
+import java.util.List;
+
+@Mod.EventBusSubscriber(modid = "gun_soul")
+public class ModEvents {
+
+    @SubscribeEvent
+    public static void  onAttachCapablilitiiesPlayer(AttachCapabilitiesEvent<Entity> event){
+        if (event.getObject() instanceof LivingEntity){
+            if (!event.getObject().getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).isPresent()){
+                event.addCapability(new ResourceLocation("gun_soul","frenzy_energy"),new FrenzyEnergyProvider());
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onGunFire(GunFireEvent event) {
+        LivingEntity shooter = event.getShooter();
+
+        // 檢查 Capability 狀態
+        shooter.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
+            // 只有在 Fever Mode 下才觸發「無限子彈」補給邏輯
+            if (energy.isFeverMode()) {
+                ItemStack gunStack = event.getGunItemStack();
+
+                // 判定是否實現了 IGun 介面
+                if (gunStack.getItem() instanceof IGun iGun) {
+                    // 獲取當前彈匣內的子彈數
+                    int currentAmmo = iGun.getCurrentAmmoCount(gunStack);
+
+                    // 這裡我們在射擊瞬間立刻補回一發
+                    // 因為 GunFireEvent 觸發時子彈可能剛被扣除或正在扣除
+                    // 補回一發等於「彈藥不減」
+                    // 注意：這裡可以加上最大彈匣限制判定，防止超出上限
+                    iGun.setCurrentAmmoCount(gunStack, currentAmmo + 1);
+                }
+            }
+        });
+    }
+
+    @SubscribeEvent
+    public static void onLivingDeath(LivingDeathEvent event) {
+        DamageSource source = event.getSource();
+
+        // 1. 守衛：判定是否為槍械傷害 (檢查消息 ID)
+        if (!source.getMsgId().contains("bullet")) return;
+
+        // 2. 守衛：判定擊殺者是否為 LivingEntity
+        if (!(source.getEntity() instanceof LivingEntity killer)) return;
+
+        // 3. 核心邏輯：獲取 Capability 並執行充能
+        killer.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
+            // 守衛：如果已經在 Fever Mode，不增加能量
+            if (energy.isFeverMode()) return;
+
+            // 先獲取基礎值
+            double charge = GunSoulConfig.BASE_KILL_CHARGE.get();
+            String victimId = ForgeRegistries.ENTITY_TYPES.getKey(event.getEntity().getType()).toString();
+
+            // 處理特殊實體加成 (這段可以考慮抽成一個獨立方法，但目前先平舖)
+            List<? extends String> specialList = GunSoulConfig.SPECIAL_ENTITY_CHARGES.get();
+            for (String entry : specialList) {
+                String[] parts = entry.split(":");
+                // 處理 domain:path:value (長度 3) 或 path:value (長度 2)
+                if (parts.length >= 2) {
+                    String id = (parts.length == 3) ? parts[0] + ":" + parts[1] : parts[0];
+                    String valStr = (parts.length == 3) ? parts[2] : parts[1];
+
+                    if (id.equals(victimId)) {
+                        try {
+                            charge = Double.parseDouble(valStr);
+                        } catch (NumberFormatException e) {
+                            // 防止 Config 填錯導致崩潰
+                            charge = GunSoulConfig.BASE_KILL_CHARGE.get();
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // 執行充能
+            energy.addEnergy((float) charge);
+
+            // 判定觸發 Fever Mode
+            if (energy.getEnergy() >= 100f) {
+                int duration = GunSoulConfig.FEVER_DURATION_TICKS.get();
+                energy.setFeverTicks(duration);
+                energy.setEnergy(0); // 觸發後清空能量，或者你想滿條保持 100 也行，依你的規則
+
+                // Action bar 提示
+                if (killer instanceof net.minecraft.world.entity.player.Player player) {
+                    player.displayClientMessage(
+                            Component.translatable("message.gun_soul.fever_start")
+                                    .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                            true // true 表示顯示在 Action Bar，false 則顯示在聊天欄
+                    );
+                }
+            }
+
+            // 同步封包到客戶端
+            GunSoulPacketHandler.INSTANCE.send(
+                    PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> killer),
+                    new FrenzyEnergySyncPacket(killer.getId(), energy.getEnergy(), energy.getFeverTicks())
+            );
+
+            // 除錯訊息 (之後可移除)
+            // killer.sendSystemMessage(Component.literal("擊殺充能: " + charge + " | 當前能量: " + energy.getEnergy()));
+        });
+    }
+}

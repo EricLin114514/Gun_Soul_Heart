@@ -1,0 +1,12 @@
+{
+  "item.gun_soul.gun_soul_heart": "銃魂之心",
+  "item.gun_soul.gun_soul_heart.desc": "§7跳動的靈魂，渴望著硝煙...",
+  "mode.gun_soul.frenzy": "狂喜",
+  "mode.gun_soul.blood_rage": "血怒",
+  "mode.gun_soul.blessing": "賜福",
+  "message.gun_soul.fever_start": "狂歡時刻已至！！！",
+  "message.gun_soul.fever_end": "為慶典畫下句點吧！",
+  "tooltip.gun_soul.current_mode": "當前模式: %s",
+  "tooltip.gun_soul.energy_level": "狂喜能量: %.1f%%",
+  "message.gun_soul.mode_switch": "模式已切換至: %s"
+}
