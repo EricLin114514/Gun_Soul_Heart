@@ -40,3 +40,6 @@ dependencies {
 ## 銘謝
 - TACZ模組開發團隊，感謝他們設計如此優秀的槍械模組
 - Curios API開發團隊，感謝他們提供API使我可以實現自定飾品
+
+## 📜 授權
+本專案採用 [MIT](LICENSE) 授權。
