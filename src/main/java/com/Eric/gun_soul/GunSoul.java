@@ -5,16 +5,18 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.InterModComms;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import top.theillusivec4.curios.api.CuriosApi;
-import top.theillusivec4.curios.api.SlotTypeMessage;
-import top.theillusivec4.curios.api.SlotTypePreset;
+
+//已棄用的IMC方案
+//import top.theillusivec4.curios.api.CuriosApi;
+//import top.theillusivec4.curios.api.SlotTypeMessage;
+//import top.theillusivec4.curios.api.SlotTypePreset;
+//import net.minecraftforge.fml.InterModComms;
+//import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 
 @Mod("gun_soul")
 public class GunSoul {
@@ -34,7 +36,8 @@ public class GunSoul {
         modEventBus.addListener(this::addCreative);
         MinecraftForge.EVENT_BUS.register(this);
 
-        modEventBus.addListener(this::enqueueIMC);
+        //利用IMC註冊curios飾品(已棄用)
+        //modEventBus.addListener(this::enqueueIMC);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -47,7 +50,7 @@ public class GunSoul {
         }
     }
 
-    private void enqueueIMC(final InterModEnqueueEvent event){
-        InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,() -> SlotTypePreset.NECKLACE.getMessageBuilder().build());
-    }
+    //private void enqueueIMC(final InterModEnqueueEvent event){
+    //    InterModComms.sendTo(CuriosApi.MODID, SlotTypeMessage.REGISTER_TYPE,() -> SlotTypePreset.NECKLACE.getMessageBuilder().build());
+    //}
 }
