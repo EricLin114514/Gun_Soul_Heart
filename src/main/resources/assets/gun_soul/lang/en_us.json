@@ -8,5 +8,6 @@
   "message.gun_soul.fever_end": "Let's draw this celebration to a close!",
   "tooltip.gun_soul.current_mode": "Current Mode: %s",
   "tooltip.gun_soul.energy_level": "Frenzy Energy: %.1f%%",
-  "message.gun_soul.mode_switch": "Mode switched to: %s"
+  "message.gun_soul.mode_switch": "Mode switched to: %s",
+  "message.gun_soul.blood_rage_triggered": "Sorry,It's not this time!"
 }

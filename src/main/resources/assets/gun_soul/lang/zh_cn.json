@@ -8,5 +8,6 @@
   "message.gun_soul.fever_end": "為慶典畫下句點吧！",
   "tooltip.gun_soul.current_mode": "當前模式: %s",
   "tooltip.gun_soul.energy_level": "狂喜能量: %.1f%%",
-  "message.gun_soul.mode_switch": "模式已切換至: %s"
+  "message.gun_soul.mode_switch": "模式已切換至: %s",
+  "message.gun_soul.blood_rage_triggered": "抱歉，還不是時候"
 }

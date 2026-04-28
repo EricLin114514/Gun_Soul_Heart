@@ -9,11 +9,14 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
@@ -24,6 +27,9 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = "gun_soul")
 public class ModEvents {
+
+    //Gun Soul專屬虛擬彈藥，不採用TACZ的Dummy Ammo
+    private static final String RESERVE_AMMO_TAG = "GunSoulReserveAmmo";
 
     @SubscribeEvent
     public static void  onAttachCapablilitiiesPlayer(AttachCapabilitiesEvent<Entity> event){
@@ -37,28 +43,31 @@ public class ModEvents {
     @SubscribeEvent
     public static void onGunFire(GunFireEvent event) {
         LivingEntity shooter = event.getShooter();
+        if (shooter.level().isClientSide) return;
+
+        ItemStack gunStack = event.getGunItemStack();
+        IGun iGun = IGun.getIGunOrNull(gunStack);
+        if (iGun == null) return;
 
         // 檢查 Capability 狀態
         shooter.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
-            // 只有在 Fever Mode 下才觸發「無限子彈」補給邏輯
+            int reserve = shooter.getPersistentData().getInt(RESERVE_AMMO_TAG);
+
+            // 1. 優先處理 Fever 模式 (無限子彈，不消耗儲備)
             if (energy.isFeverMode()) {
-                ItemStack gunStack = event.getGunItemStack();
+                iGun.setCurrentAmmoCount(gunStack, iGun.getCurrentAmmoCount(gunStack) + 1);
+                return;
+            }
 
-                // 判定是否實現了 IGun 介面
-                if (gunStack.getItem() instanceof IGun iGun) {
-                    // 獲取當前彈匣內的子彈數
-                    int currentAmmo = iGun.getCurrentAmmoCount(gunStack);
-
-                    // 這裡我們在射擊瞬間立刻補回一發
-                    // 因為 GunFireEvent 觸發時子彈可能剛被扣除或正在扣除
-                    // 補回一發等於「彈藥不減」
-                    // 注意：這裡可以加上最大彈匣限制判定，防止超出上限
-                    iGun.setCurrentAmmoCount(gunStack, currentAmmo + 1);
-                }
+            // 2. 處理虛擬儲備彈藥 (如果有儲備，則消耗儲備來補彈)
+            if (reserve > 0) {
+                iGun.setCurrentAmmoCount(gunStack, iGun.getCurrentAmmoCount(gunStack) + 1);
+                shooter.getPersistentData().putInt(RESERVE_AMMO_TAG, reserve - 1);
             }
         });
     }
 
+    //狂喜機制，能量條填充部分
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
         DamageSource source = event.getSource();
@@ -140,5 +149,77 @@ public class ModEvents {
             });
 
         });
+    }
+
+    //血怒機制：受傷時增加虛擬儲備彈藥
+    @SubscribeEvent
+    public static void onLivingHurt(LivingHurtEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide) return;
+
+        // 1. 守衛：檢查是否佩戴首飾 (使用 Curios API)
+        var curioOpt = CuriosApi.getCuriosHelper()
+                .findFirstCurio(entity, ModItems.GUN_SOUL_HEART.get());
+        if (curioOpt.isEmpty()) return;
+
+        // 2. 守衛：模式檢查
+        ItemStack heartStack = curioOpt.get().stack();
+        int modeIndex = heartStack.getOrCreateTag().getInt("SoulHeartMode");
+        SoulHeartMode mode = SoulHeartMode.values()[modeIndex % SoulHeartMode.values().length];
+        if (mode != SoulHeartMode.BLOOD_RAGE) return;
+
+        // 3. 守衛：生命值門檻檢查
+        float threshold = entity.getMaxHealth() * GunSoulConfig.BLOOD_RAGE_THRESHOLD.get().floatValue();
+        if (entity.getHealth() > threshold) return;
+
+        // 4. 守衛：冷卻檢查 (使用 PersistentData)
+        long currentTime = entity.level().getGameTime();
+        long lastTrigger = entity.getPersistentData().getLong("BloodRageLastTick");
+        if (currentTime - lastTrigger < GunSoulConfig.BLOOD_RAGE_COOLDOWN.get()) return;
+
+        // 5. 守衛：手持槍械檢查
+        ItemStack mainHand = entity.getMainHandItem();
+        if (!(mainHand.getItem() instanceof IGun)) return;
+
+        // --- 核心邏輯 ---
+
+        // A. 計算回填量
+        int ammoToAdd = Math.round(event.getAmount() * GunSoulConfig.AMMO_PER_DAMAGE.get().floatValue());
+        if (ammoToAdd <= 0) return;
+
+        // B. 執行補彈
+        int currentReserve = entity.getPersistentData().getInt(RESERVE_AMMO_TAG);
+        entity.getPersistentData().putInt(RESERVE_AMMO_TAG, currentReserve + ammoToAdd);
+
+        entity.getPersistentData().putLong("BloodRageLastTick", currentTime);
+
+        // C. 施加藥水效果
+        applyBloodRageEffects(entity);
+
+        // D. 更新狀態
+        entity.getPersistentData().putLong("BloodRageLastTick", currentTime);
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            player.displayClientMessage(Component.translatable("message.gun_soul.blood_rage_triggered")
+                    .withStyle(ChatFormatting.RED), true);
+        }
+    }
+
+
+    private static void applyBloodRageEffects(LivingEntity entity) {
+        List<? extends String> effectStrings = GunSoulConfig.BLOOD_RAGE_EFFECTS.get();
+        for (String s : effectStrings) {
+            try {
+                String[] parts = s.split(";");
+                if (parts.length < 3) continue;
+
+                ResourceLocation id = new ResourceLocation(parts[0]);
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(id);
+                if (effect == null) continue;
+
+                int duration = Integer.parseInt(parts[1]);
+                int amplifier = Integer.parseInt(parts[2]);
+                entity.addEffect(new MobEffectInstance(effect, duration, amplifier, false, true));
+            } catch (Exception ignored) {}
+        }
     }
 }
