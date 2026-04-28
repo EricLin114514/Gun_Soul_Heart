@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 
@@ -43,8 +44,7 @@ public class GunSoulItem extends Item implements ICurioItem {
                 // 2. 結束判斷
                 if (energy.getFeverTicks() <= 0) {
                     energy.setEnergy(0f);
-                    if (entity instanceof Player) {
-                        Player playerEntity = (Player) entity;
+                    if (entity instanceof Player playerEntity) {
                         playerEntity.displayClientMessage(Component.translatable("message.gun_soul.fever_end"), true);
                     }
                 }
@@ -80,7 +80,8 @@ public class GunSoulItem extends Item implements ICurioItem {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand){
+    @NotNull
+    public InteractionResultHolder<ItemStack> use(@NotNull Level level, Player player,@NotNull InteractionHand hand){
         ItemStack itemStack = player.getItemInHand(hand);
 
         //偵測及切換模式
@@ -99,7 +100,7 @@ public class GunSoulItem extends Item implements ICurioItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip,@NotNull TooltipFlag flag) {
         tooltip.add(Component.translatable("item.gun_soul.gun_soul_heart.desc"));
 
         CompoundTag nbt = stack.getOrCreateTag();
