@@ -57,25 +57,24 @@ public class GunSoulItem extends Item implements ICurioItem {
             } else {
                 // --- 非 Fever 模式下的衰減邏輯 ---
                 CompoundTag nbt = stack.getOrCreateTag();
-                // 注意：這裡你原本拼錯成 SouHeartMode，修正為 SoulHeartMode
                 int modeindex = nbt.getInt("SoulHeartMode");
                 SoulHeartMode mode = SoulHeartMode.values()[modeindex % SoulHeartMode.values().length];
 
-                if (mode == SoulHeartMode.FRENZY) {
-                    int timer = nbt.getInt("DecayTimer") + 1;
-                    if (timer >= GunSoulConfig.DECAY_INTERVAL_TICKS.get()) {
-                        if (energy.getEnergy() > 0) {
-                            energy.addEnergy(-GunSoulConfig.BASE_DECAY_AMOUNT.get().floatValue());
-                            // 封包同步
-                            GunSoulPacketHandler.INSTANCE.send(
-                                    PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity),
-                                    new FrenzyEnergySyncPacket(entity.getId(), energy.getEnergy(), energy.getFeverTicks())
-                            );
-                        }
-                        timer = 0;
+                if (mode != SoulHeartMode.FRENZY)  return;
+
+                int timer = nbt.getInt("DecayTimer") + 1;
+                if (timer >= GunSoulConfig.DECAY_INTERVAL_TICKS.get()) {
+                    if (energy.getEnergy() > 0) {
+                        energy.addEnergy(-GunSoulConfig.BASE_DECAY_AMOUNT.get().floatValue());
+                        // 封包同步
+                        GunSoulPacketHandler.INSTANCE.send(
+                                PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity),
+                                new FrenzyEnergySyncPacket(entity.getId(), energy.getEnergy(), energy.getFeverTicks())
+                        );
                     }
-                    nbt.putInt("DecayTimer", timer);
+                    timer = 0;
                 }
+                nbt.putInt("DecayTimer", timer);
             }
         });
     }
@@ -85,18 +84,18 @@ public class GunSoulItem extends Item implements ICurioItem {
         ItemStack itemStack = player.getItemInHand(hand);
 
         //偵測及切換模式
-        if (player.isShiftKeyDown()){
-            if (!level.isClientSide()){
-                CompoundTag nbt = itemStack.getOrCreateTag();
-                int currentModeIndex = nbt.getInt(MODE_TAG);
-                SoulHeartMode currentmode =SoulHeartMode.values()[currentModeIndex % SoulHeartMode.values().length];
-                SoulHeartMode nextMode = currentmode.next();
-                nbt.putInt(MODE_TAG,nextMode.ordinal());
-                player.displayClientMessage(Component.translatable("message.gun_soul.mode_switch", nextMode.getDisplayName()), true);
-            }
-            return InteractionResultHolder.sidedSuccess(itemStack,level.isClientSide());
+        if (!player.isShiftKeyDown()) return  InteractionResultHolder.pass(itemStack);
+
+        if (!level.isClientSide()){
+            CompoundTag nbt = itemStack.getOrCreateTag();
+            int currentModeIndex = nbt.getInt(MODE_TAG);
+            SoulHeartMode currentmode =SoulHeartMode.values()[currentModeIndex % SoulHeartMode.values().length];
+            SoulHeartMode nextMode = currentmode.next();
+            nbt.putInt(MODE_TAG,nextMode.ordinal());
+            player.displayClientMessage(Component.translatable("message.gun_soul.mode_switch", nextMode.getDisplayName()), true);
         }
-        return  InteractionResultHolder.pass(itemStack);
+        return InteractionResultHolder.sidedSuccess(itemStack,level.isClientSide());
+
     }
 
     @Override
