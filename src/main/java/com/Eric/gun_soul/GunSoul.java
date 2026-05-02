@@ -1,5 +1,8 @@
 package com.Eric.gun_soul;
 
+import com.Eric.gun_soul.api.ExperienceHandlerRegistry;
+import com.Eric.gun_soul.compat.MaidExperienceHandler;
+import com.Eric.gun_soul.impl.VanillaPlayerExpHandler;
 import com.Eric.gun_soul.networks.GunSoulPacketHandler;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.common.MinecraftForge;
@@ -10,6 +13,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 //已棄用的IMC方案
 //import top.theillusivec4.curios.api.CuriosApi;
@@ -42,6 +47,20 @@ public class GunSoul {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(GunSoulPacketHandler::register);
+
+        event.enqueueWork(() -> {
+            // --- 註冊經驗處理器 ---
+
+            // 1. 註冊原版玩家
+            ExperienceHandlerRegistry.register(new VanillaPlayerExpHandler());
+            LOGGER.info("[GunSoul] registered Player");
+
+            // 2. 檢查是否有 TLM，有的話才註冊女僕
+            if (net.minecraftforge.fml.ModList.get().isLoaded("touhou_little_maid")) {
+                ExperienceHandlerRegistry.register(new MaidExperienceHandler());
+                LOGGER.info("[GunSoul] Touhou Little Maid，registered maid compat");
+            }
+        });
     }
 
     private void addCreative(BuildCreativeModeTabContentsEvent event){

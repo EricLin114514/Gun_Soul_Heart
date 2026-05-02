@@ -1,8 +1,10 @@
 package com.Eric.gun_soul;
 
+import com.Eric.gun_soul.api.ExperienceHandlerRegistry;
 import com.Eric.gun_soul.capability.FrenzyEnergyProvider;
 import com.Eric.gun_soul.networks.FrenzyEnergySyncPacket;
 import com.Eric.gun_soul.networks.GunSoulPacketHandler;
+import com.mojang.logging.LogUtils;
 import com.tacz.guns.api.event.common.GunFireEvent;
 import com.tacz.guns.api.item.IGun;
 import net.minecraft.ChatFormatting;
@@ -23,6 +25,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.List;
@@ -30,8 +35,11 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = "gun_soul")
 public class ModEvents {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     //Gun Soul專屬虛擬彈藥，不採用TACZ的Dummy Ammo
     private static final String RESERVE_AMMO_TAG = "GunSoulReserveAmmo";
+    private static final Logger log = LoggerFactory.getLogger(ModEvents.class);
 
     @SubscribeEvent
     public static void  onAttachCapablilitiiesPlayer(AttachCapabilitiesEvent<Entity> event){
@@ -51,10 +59,14 @@ public class ModEvents {
         IGun iGun = IGun.getIGunOrNull(gunStack);
         if (iGun == null) return;
 
+        // 獲取儲備彈藥數值
+        int reserve = shooter.getPersistentData().getInt(RESERVE_AMMO_TAG);
+
+        // --- 賜福模式處理 (Blessing Mode) ---
+        handleBlessingLogic(shooter, reserve);
+
         // 檢查 Capability 狀態
         shooter.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
-            int reserve = shooter.getPersistentData().getInt(RESERVE_AMMO_TAG);
-
             // 1. 優先處理 Fever 模式 (無限子彈，不消耗儲備)
             if (energy.isFeverMode()) {
                 iGun.setCurrentAmmoCount(gunStack, iGun.getCurrentAmmoCount(gunStack) + 1);
@@ -155,7 +167,7 @@ public class ModEvents {
 
     //血怒機制：受傷時增加虛擬儲備彈藥
     @SubscribeEvent
-    public static void onLivingHurt(LivingHurtEvent event) {
+    public static void onLivingHurt(@NotNull LivingHurtEvent event) {
         LivingEntity entity = event.getEntity();
         if (entity.level().isClientSide) return;
 
@@ -221,7 +233,7 @@ public class ModEvents {
             int reserve = player.getPersistentData().getInt("GunSoulReserveAmmo");
             if (reserve <= 0) return;
 
-            // 4. 守衛：檢查是否手持槍械 (使用你提供的 IGun 介面)
+            // 4. 守衛：檢查是否手持槍械 (使用IGun 介面)
             ItemStack mainHand = player.getMainHandItem();
             if (!(mainHand.getItem() instanceof IGun)) return;
 
@@ -237,6 +249,46 @@ public class ModEvents {
         });
     }
 
+    public static void handleBlessingLogic(LivingEntity shooter, int currentReserve){
+        LOGGER.debug("[GunSoul] blessing start");
+        // 守衛：檢查是否佩戴首飾
+        var curioOpt = CuriosApi.getCuriosHelper().findFirstCurio(shooter, ModItems.GUN_SOUL_HEART.get());
+        if (curioOpt.isEmpty()) return;
+
+        // 守衛：模式檢查 (賜福模式)
+        ItemStack heartStack = curioOpt.get().stack();
+        int modeIndex = heartStack.getOrCreateTag().getInt(GunSoulItem.MODE_TAG);
+        SoulHeartMode mode = SoulHeartMode.values()[modeIndex % SoulHeartMode.values().length];
+        if (mode != SoulHeartMode.BLESSING) return;
+
+        // 透過 API 獲取對應的處理器 (解耦點)
+        ExperienceHandlerRegistry.getHandler(shooter).ifPresent(handler -> {
+            //1.守衛:檢查reserve是否大於0
+            if (currentReserve > 0) return;
+
+            // 2. 守衛：等級底線判定
+            int level = handler.getCurrentLevel(shooter);
+            if (level < GunSoulConfig.BLESSING_MIN_LEVEL.get()) return;
+
+            // 3. 守衛：機率判定 (隨等級增加概率)
+            double chance = Math.min(GunSoulConfig.BLESSING_BASE_CHANCE.get() + ((level-GunSoulConfig.BLESSING_MIN_LEVEL.get()) * GunSoulConfig.CHANCE_PER_LEVEL.get()),GunSoulConfig.BLESSING_MAX_CHANCE.get());
+            double roll =shooter.getRandom().nextDouble();
+
+            LOGGER.debug("[GunSoul] chance={}, roll={}", String.format("%.2f", chance), String.format("%.2f", roll));
+
+            if (roll > chance) return;
+
+            // 4. 執行：消耗經驗並轉換為儲備彈藥
+            int expCost = GunSoulConfig.BLESSING_EXP_COST.get();
+            handler.consumeExperience(shooter, expCost);
+
+            // 增加虛擬儲備 (轉換比例由 Config 設定)
+            int ammoToGive = GunSoulConfig.BLESSING_AMMO_PER_TRIGGER.get();
+            shooter.getPersistentData().putInt(RESERVE_AMMO_TAG,ammoToGive);
+
+            LOGGER.info("blessing successes");
+        });
+    }
 
     private static void applyBloodRageEffects(LivingEntity entity) {
         List<? extends String> effectStrings = GunSoulConfig.BLOOD_RAGE_EFFECTS.get();

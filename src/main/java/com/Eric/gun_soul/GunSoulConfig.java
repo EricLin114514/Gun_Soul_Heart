@@ -24,6 +24,15 @@ public class GunSoulConfig {
     public static final ForgeConfigSpec.BooleanValue BLOOD_RAGE_GIVE_EFFECTS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLOOD_RAGE_EFFECTS;
 
+    //Blessing
+    public static final ForgeConfigSpec.IntValue BLESSING_MIN_LEVEL;
+    public static final ForgeConfigSpec.DoubleValue BLESSING_BASE_CHANCE;
+    public static final ForgeConfigSpec.DoubleValue CHANCE_PER_LEVEL;
+    public static final ForgeConfigSpec.DoubleValue BLESSING_MAX_CHANCE;
+    public static final ForgeConfigSpec.IntValue BLESSING_EXP_COST;
+    public static final ForgeConfigSpec.IntValue BLESSING_AMMO_PER_TRIGGER;
+
+
     static {
         BUILDER.push("狂喜模式設定(Frenzy Mode Settings)");
 
@@ -73,6 +82,28 @@ public class GunSoulConfig {
                 .defineList("bloodRageEffects",
                         List.of("minecraft:strength;60;0", "minecraft:resistance;60;0"),
                         obj -> obj instanceof String);
+
+        BUILDER.pop();
+
+        BUILDER.push("賜福模式設定 (Blessing Settings)");
+        BLESSING_MIN_LEVEL = BUILDER
+                .comment("賜福的最低觸發等級")
+                .defineInRange("blessingMinLevel",3,0,Integer.MAX_VALUE);
+        BLESSING_BASE_CHANCE = BUILDER
+                .comment("賜福的基礎觸發機率")
+                .defineInRange("blessingBaseChance",0.2,0.0,1.0);
+        CHANCE_PER_LEVEL = BUILDER
+                .comment("等級增加的機率比例")
+                .defineInRange("chancePerLevel",0.02,0,1.0);
+        BLESSING_MAX_CHANCE = BUILDER
+                .comment("最大觸發機率")
+                .defineInRange("blessingMaxChance",1.0,0,1.0);
+        BLESSING_EXP_COST = BUILDER
+                .comment("賜福消耗的經驗")
+                .defineInRange("blessingExpCost",5,0,Integer.MAX_VALUE);
+        BLESSING_AMMO_PER_TRIGGER = BUILDER
+                .comment("觸發成功或的彈藥輛")
+                .defineInRange("blessingAmmoPerTrigger",15,0,Integer.MAX_VALUE);
 
         BUILDER.pop();
     }
