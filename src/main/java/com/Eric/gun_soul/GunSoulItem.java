@@ -109,5 +109,6 @@ public class GunSoulItem extends Item implements ICurioItem {
 
         // 當前模式: [狂喜/賜福]
         tooltip.add(Component.translatable("tooltip.gun_soul.current_mode", mode.getDisplayName()));
+        tooltip.add(mode.getTooltip());
     }
 }

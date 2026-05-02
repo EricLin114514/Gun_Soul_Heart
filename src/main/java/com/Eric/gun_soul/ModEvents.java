@@ -13,8 +13,10 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -202,6 +204,37 @@ public class ModEvents {
             player.displayClientMessage(Component.translatable("message.gun_soul.blood_rage_triggered")
                     .withStyle(ChatFormatting.RED), true);
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        // 1. 守衛：基本環境判定
+        if (event.phase != TickEvent.Phase.END || event.side.isClient()) return;
+
+        Player player = event.player;
+
+        // 2. 守衛：獲取並檢查 Fever 模式 (Fever 模式下不顯示此 UI)
+        player.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
+            if (energy.isFeverMode()) return;
+
+            // 3. 守衛：檢查儲備彈藥數值
+            int reserve = player.getPersistentData().getInt("GunSoulReserveAmmo");
+            if (reserve <= 0) return;
+
+            // 4. 守衛：檢查是否手持槍械 (使用你提供的 IGun 介面)
+            ItemStack mainHand = player.getMainHandItem();
+            if (!(mainHand.getItem() instanceof IGun)) return;
+
+            // --- 通過所有守衛，開始渲染 Action Bar ---
+
+            // 構建顯示內容，例如: §c[ 血怒儲備: 25 ]
+            Component uiMessage = Component.translatable("tooltip.gun_soul.reserve_ammo")
+                    .append(Component.literal("§6[ §e" + reserve + " §6] "))
+                    .withStyle(ChatFormatting.BOLD);
+
+            // 常駐顯示在 Action Bar (第二個參數為 true)
+            player.displayClientMessage(uiMessage, true);
+        });
     }
 
 

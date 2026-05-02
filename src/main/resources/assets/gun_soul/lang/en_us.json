@@ -2,12 +2,16 @@
   "item.gun_soul.gun_soul_heart": "Gun Soul Heart",
   "item.gun_soul.gun_soul_heart.desc": "§7A beating soul, yearning for the scent of gunpowder...",
   "mode.gun_soul.frenzy": "Frenzy",
+  "mode.gun_soul.tooltip.frenzy":"Make a sacrifice for Gun Soul",
   "mode.gun_soul.blood_rage": "Blood Rage",
+  "mode.gun_soul.tooltip.blood_rage":"Turn pain into power,pay for blood debts with blood",
   "mode.gun_soul.blessing": "Blessing",
+  "mode.gun_soul.tooltip.blessing":"Gifts from Gun  Soul",
   "message.gun_soul.fever_start": "The carnival has begun!!!",
   "message.gun_soul.fever_end": "Let's draw this celebration to a close!",
   "tooltip.gun_soul.current_mode": "Current Mode: %s",
   "tooltip.gun_soul.energy_level": "Frenzy Energy: %.1f%%",
   "message.gun_soul.mode_switch": "Mode switched to: %s",
-  "message.gun_soul.blood_rage_triggered": "Sorry,It's not this time!"
+  "message.gun_soul.blood_rage_triggered": "Sorry,It's not this time!",
+  "tooltip.gun_soul.reserve_ammo": "Soul Ammo :"
 }
