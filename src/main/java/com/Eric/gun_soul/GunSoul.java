@@ -2,6 +2,7 @@ package com.Eric.gun_soul;
 
 import com.Eric.gun_soul.api.ExperienceHandlerRegistry;
 import com.Eric.gun_soul.compat.MaidExperienceHandler;
+import com.Eric.gun_soul.compat.TLMCompat;
 import com.Eric.gun_soul.impl.VanillaPlayerExpHandler;
 import com.Eric.gun_soul.networks.GunSoulPacketHandler;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -56,10 +57,7 @@ public class GunSoul {
             LOGGER.info("[GunSoul] registered Player");
 
             // 2. 檢查是否有 TLM，有的話才註冊女僕
-            if (net.minecraftforge.fml.ModList.get().isLoaded("touhou_little_maid")) {
-                ExperienceHandlerRegistry.register(new MaidExperienceHandler());
-                LOGGER.info("[GunSoul] Touhou Little Maid，registered maid compat");
-            }
+            TLMCompat.init();
         });
     }
 
