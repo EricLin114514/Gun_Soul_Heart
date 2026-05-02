@@ -112,7 +112,15 @@ minecraft {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    maven { url = "https://maven.theillusivec4.top/" } // Curios
+    maven {
+        url = "https://maven.theillusivec4.top/"// Curios
+    }
+    maven {
+        url = "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
 }
 
 dependencies {
@@ -126,6 +134,8 @@ dependencies {
     compileOnly fg.deobf(fileTree(dir: 'libs', include: ['tacz-*.jar']))
     // TACZ (需要本地 jar 或確認有公開 maven)
     // 暫時先 compileOnly，之後補上
+
+    compileOnly fg.deobf('curse.maven:touhou-little-maid-355044:6613821-sources-6613853')
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
