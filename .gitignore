@@ -22,7 +22,7 @@ eclipse
 run
 
 # 排除所有 libs 資料夾下的 jar 檔
-/libs/*.jar
+libs/*.jar
 
 # Files from Forge MDK
 forge*changelog.txt
