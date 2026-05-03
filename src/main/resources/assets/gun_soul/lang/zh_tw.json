@@ -1,17 +1,17 @@
 {
   "item.gun_soul.gun_soul_heart": "銃魂之心",
-  "item.gun_soul.gun_soul_heart.desc": "§7跳動的靈魂，渴望著硝煙...",
+  "item.gun_soul.gun_soul_heart.desc": "§7視火器為信仰的證明，可與銃魂共鳴",
   "mode.gun_soul.frenzy": "狂喜",
-  "mode.gun_soul.tooltip.frenzy": "為銃魂獻上祭品吧",
+  "mode.gun_soul.tooltip.frenzy": "§7為銃魂獻上祭品吧",
   "mode.gun_soul.blood_rage": "血怒",
-  "mode.gun_soul.tooltip.blood_rage": "化痛苦為力量，血債血償",
+  "mode.gun_soul.tooltip.blood_rage": "§7化痛苦為力量，血債血償",
   "mode.gun_soul.blessing": "賜福",
-  "mode.gun_soul.tooltip.blessing": "來自銃魂的禮物",
+  "mode.gun_soul.tooltip.blessing": "§7來自銃魂的禮物",
   "message.gun_soul.fever_start": "狂歡時刻已至！！！",
   "message.gun_soul.fever_end": "為慶典畫下句點吧！",
   "tooltip.gun_soul.current_mode": "當前模式: %s",
   "tooltip.gun_soul.energy_level": "狂喜能量: %.1f%%",
   "message.gun_soul.mode_switch": "模式已切換至: %s",
-  "message.gun_soul.blood_rage_triggered": "抱歉，還不是時候",
+  "message.gun_soul.blood_rage_triggered": "你們將要為此付出代價",
   "tooltip.gun_soul.reserve_ammo": "靈魂彈藥 :"
 }
