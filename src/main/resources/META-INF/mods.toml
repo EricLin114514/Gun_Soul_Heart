@@ -69,14 +69,14 @@ description="""一個為TACZ新增一些特殊功能的模組\n A mod that add s
 [[dependencies.${mod_id}]]
     modId="tacz"
     mandatory=true
-    versionRange="[1.0,)"
+    versionRange="[1.14,)"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="curios"
     mandatory=true
-    versionRange="[1.0,)"
+    versionRange="[5.9.1,)"
     ordering="AFTER"
     side="BOTH"
 
