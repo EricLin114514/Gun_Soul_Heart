@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "fighting",
+  "key": {
+    "#": {
+      "tag": "forge:nuggets/iron"
+    },
+    "X": {
+      "item": "minecraft:gunpowder"
+    },
+    "H": {
+      "item": "minecraft:eye_of_ender"
+    }
+  },
+  "pattern": [
+    "X#X",
+    "#H#",
+    "X#X"
+  ],
+  "result": {
+    "count": 1,
+    "item": "gun_soul:gun_soul_heart"
+  },
+  "show_notification": true
+}
