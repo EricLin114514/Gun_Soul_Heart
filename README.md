@@ -10,7 +10,7 @@
 ## 支援版本及依賴模組
 - **Minecraft** : 1.20.1
 - **Forge** : 47.4.10
-- **Timeless&Classic Zero** : 1.14+
+- **Timeless&Classic Zero** : 1.1.4+
 - **Curios API** : 5.9.1+
 
 ## 功能概要
@@ -85,7 +85,7 @@ This mod adds a Curios accessory, the "Gun Soul Heart," providing three unique m
 ## Supported Versions & Dependencies
 - **Minecraft** : 1.20.1
 - **Forge** : 47.4.10
-- **Timeless&Classic Zero** : 1.14+
+- **Timeless&Classic Zero** : 1.1.4+
 - **Curios API** : 5.9.1+
 
 ## Feature Overview
