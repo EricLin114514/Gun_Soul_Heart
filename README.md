@@ -136,7 +136,7 @@ Suggestions for code optimization are welcome.
 - **Update Frequency**: As the developer is currently a high school senior, development time is limited. Updates will be irregular.
 - **Bug Fixes**: Priority will be given to critical bugs (e.g., game crashes or save corruption). Minor visual issues or feature requests will be addressed as time permits.
 
-### Known Issues## Known Issues
+### Known Issues
 - **Ammo Display Glitch**: Visual numerical error only when using Soul Ammo or during Fever Mode.
     - *Status*: **WONTFIX**. This is a client-side visual only bug and does not affect gameplay.
 - *Feel free to report bugs by opening an Issue!*
