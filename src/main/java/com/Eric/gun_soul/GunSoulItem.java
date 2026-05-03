@@ -107,7 +107,7 @@ public class GunSoulItem extends Item implements ICurioItem {
         int modeIndex = nbt.getInt("SoulHeartMode");
         SoulHeartMode mode = SoulHeartMode.values()[modeIndex % SoulHeartMode.values().length];
 
-        // 當前模式: [狂喜/賜福]
+        // 顯示當前模式
         tooltip.add(Component.translatable("tooltip.gun_soul.current_mode", mode.getDisplayName()));
         tooltip.add(mode.getTooltip());
     }

@@ -8,13 +8,18 @@ import com.mojang.logging.LogUtils;
 import com.tacz.guns.api.event.common.GunFireEvent;
 import com.tacz.guns.api.item.IGun;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
@@ -42,7 +47,7 @@ public class ModEvents {
     private static final Logger log = LoggerFactory.getLogger(ModEvents.class);
 
     @SubscribeEvent
-    public static void  onAttachCapablilitiiesPlayer(AttachCapabilitiesEvent<Entity> event){
+    public static void onAttachCapabilitiesPlayer(AttachCapabilitiesEvent<Entity> event){
         if (event.getObject() instanceof LivingEntity){
             if (!event.getObject().getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).isPresent()){
                 event.addCapability(new ResourceLocation("gun_soul","frenzy_energy"),new FrenzyEnergyProvider());
@@ -78,6 +83,37 @@ public class ModEvents {
                 iGun.setCurrentAmmoCount(gunStack, iGun.getCurrentAmmoCount(gunStack) + 1);
                 shooter.getPersistentData().putInt(RESERVE_AMMO_TAG, reserve - 1);
             }
+        });
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        // 1. 守衛：基本環境判定
+        if (event.phase != TickEvent.Phase.END || event.side.isClient()) return;
+
+        Player player = event.player;
+
+        // 2. 守衛：獲取並檢查 Fever 模式 (Fever 模式下不顯示此 UI)
+        player.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
+            if (energy.isFeverMode()) return;
+
+            // 3. 守衛：檢查儲備彈藥數值
+            int reserve = player.getPersistentData().getInt("GunSoulReserveAmmo");
+            if (reserve <= 0) return;
+
+            // 4. 守衛：檢查是否手持槍械 (使用IGun 介面)
+            ItemStack mainHand = player.getMainHandItem();
+            if (!(mainHand.getItem() instanceof IGun)) return;
+
+            // --- 通過所有守衛，開始渲染 Action Bar ---
+
+            // 構建顯示內容，例如: §c[ 血怒儲備: 25 ]
+            Component uiMessage = Component.translatable("tooltip.gun_soul.reserve_ammo")
+                    .append(Component.literal("§6[ §e" + reserve + " §6] "))
+                    .withStyle(ChatFormatting.BOLD);
+
+            // 常駐顯示在 Action Bar (第二個參數為 true)
+            player.displayClientMessage(uiMessage, true);
         });
     }
 
@@ -141,6 +177,9 @@ public class ModEvents {
                     int duration = GunSoulConfig.FEVER_DURATION_TICKS.get();
                     energy.setFeverTicks(duration);
                     energy.setEnergy(0); // 觸發後清空能量，或者你想滿條保持 100 也行，依你的規則
+
+                    // 煙火特效
+                    spawnFeverEffects(killer);
 
                     // Action bar 提示
                     if (killer instanceof net.minecraft.world.entity.player.Player player) {
@@ -210,7 +249,10 @@ public class ModEvents {
         // C. 施加藥水效果
         applyBloodRageEffects(entity);
 
-        // D. 更新狀態
+        // D. 釋放特效
+        spawnBloodRageEffect(entity);
+
+        // E. 更新狀態
         entity.getPersistentData().putLong("BloodRageLastTick", currentTime);
         if (entity instanceof net.minecraft.world.entity.player.Player player) {
             player.displayClientMessage(Component.translatable("message.gun_soul.blood_rage_triggered")
@@ -218,37 +260,7 @@ public class ModEvents {
         }
     }
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        // 1. 守衛：基本環境判定
-        if (event.phase != TickEvent.Phase.END || event.side.isClient()) return;
-
-        Player player = event.player;
-
-        // 2. 守衛：獲取並檢查 Fever 模式 (Fever 模式下不顯示此 UI)
-        player.getCapability(FrenzyEnergyProvider.FRENZY_ENERGY).ifPresent(energy -> {
-            if (energy.isFeverMode()) return;
-
-            // 3. 守衛：檢查儲備彈藥數值
-            int reserve = player.getPersistentData().getInt("GunSoulReserveAmmo");
-            if (reserve <= 0) return;
-
-            // 4. 守衛：檢查是否手持槍械 (使用IGun 介面)
-            ItemStack mainHand = player.getMainHandItem();
-            if (!(mainHand.getItem() instanceof IGun)) return;
-
-            // --- 通過所有守衛，開始渲染 Action Bar ---
-
-            // 構建顯示內容，例如: §c[ 血怒儲備: 25 ]
-            Component uiMessage = Component.translatable("tooltip.gun_soul.reserve_ammo")
-                    .append(Component.literal("§6[ §e" + reserve + " §6] "))
-                    .withStyle(ChatFormatting.BOLD);
-
-            // 常駐顯示在 Action Bar (第二個參數為 true)
-            player.displayClientMessage(uiMessage, true);
-        });
-    }
-
+    //賜福機制
     public static void handleBlessingLogic(LivingEntity shooter, int currentReserve){
         LOGGER.debug("[GunSoul] blessing start");
         // 守衛：檢查是否佩戴首飾
@@ -286,6 +298,8 @@ public class ModEvents {
             int ammoToGive = GunSoulConfig.BLESSING_AMMO_PER_TRIGGER.get();
             shooter.getPersistentData().putInt(RESERVE_AMMO_TAG,ammoToGive);
 
+            spawnBlessingEffect(shooter);
+
             LOGGER.info("blessing successes");
         });
     }
@@ -305,6 +319,72 @@ public class ModEvents {
                 int amplifier = Integer.parseInt(parts[2]);
                 entity.addEffect(new MobEffectInstance(effect, duration, amplifier, false, true));
             } catch (Exception ignored) {}
+        }
+    }
+
+    private static void spawnFeverEffects(LivingEntity entity) {
+        if (entity.level() instanceof ServerLevel serverLevel) {
+            // 1. 不死圖騰的特效 (視覺衝擊力強)
+            for (int i = 0; i < 30; i++) {
+                double offsetX = (entity.getRandom().nextDouble() - 0.5) * 1.5;
+                double offsetY = entity.getRandom().nextDouble() * 2.0;
+                double offsetZ = (entity.getRandom().nextDouble() - 0.5) * 1.5;
+
+                serverLevel.sendParticles(ParticleTypes.TOTEM_OF_UNDYING,
+                        entity.getX() + offsetX, entity.getY() + offsetY, entity.getZ() + offsetZ,
+                        1, 0.0, 0.0, 0.0, 0.05);
+            }
+
+            SoundSource source;
+            if (entity instanceof Player){
+                source = SoundSource.PLAYERS;
+            } else if (entity instanceof Enemy) {
+                source = SoundSource.HOSTILE;
+            } else {
+                source = SoundSource.NEUTRAL;
+            }
+
+            // 2. 播放煙火爆炸音效，增加打擊感
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    SoundEvents.TOTEM_USE,
+                    source, 1.0F, 1.0F);
+        }
+    }
+
+    public static void spawnBlessingEffect(LivingEntity entity){
+        if (entity.level() instanceof  ServerLevel serverLevel){
+            for (int i = 0; i < 10; i++){
+                double offsetX = (entity.getRandom().nextDouble() - 0.5) * 1.5;
+                double offsetY = entity.getRandom().nextDouble() * 2.0;
+                double offsetZ = (entity.getRandom().nextDouble() - 0.5) * 1.5;
+
+                serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER,
+                        entity.getX() + offsetX, entity.getY() + offsetY, entity.getZ() + offsetZ,
+                        1, 0.0, 0.0, 0.0, 0.05);
+            }
+        }
+    }
+
+    public static void spawnBloodRageEffect(LivingEntity entity){
+        if (entity.level() instanceof ServerLevel serverLevel){
+            serverLevel.sendParticles(ParticleTypes.CRIT,entity.getX(),entity.getY()+entity.getBbHeight(),entity.getZ(),
+                    15,
+                    0.2,0.2,0.2,
+                    0.15
+            );
+
+            SoundSource source;
+            if (entity instanceof Player){
+                source = SoundSource.PLAYERS;
+            } else if (entity instanceof Enemy) {
+                source = SoundSource.HOSTILE;
+            } else {
+                source = SoundSource.NEUTRAL;
+            }
+
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    SoundEvents.PLAYER_ATTACK_CRIT,
+                    source, 1.0F, 1.0F);
         }
     }
 }
