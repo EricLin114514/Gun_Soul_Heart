@@ -42,7 +42,7 @@ authors="${mod_authors}" #optional
 #displayTest="MATCH_VERSION" # if nothing is specified, MATCH_VERSION is the default when clientSideOnly=false, otherwise IGNORE_ALL_VERSION when clientSideOnly=true (#optional)
 
 # The description text for the mod (multi line!) (#mandatory)
-description="${mod_description}"
+description="""一個為TACZ新增一些特殊功能的模組\n A mod that add some speacial feature to TACZ\n \n 跳動的靈魂，渴望著硝煙... \n A beating soul, yearning for the scent of gunpowder..."""
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
 [[dependencies.${mod_id}]] #optional
     # the modid of the dependency
